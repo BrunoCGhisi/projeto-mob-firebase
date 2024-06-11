@@ -1,7 +1,14 @@
-import { Text } from "react-native";
+import { Text, View, TouchableOpacity } from "react-native";
 
-export default function Details(){
+export default function Details({navigation}){
     return(
-        <Text>Maria melhor amiga do mundo</Text>
+        <View> 
+            <TouchableOpacity onPress={() => navigation.navigate("NewTask")}> 
+                <Text>NewTask</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Task")}> 
+                <Text>Task</Text>
+            </TouchableOpacity>
+        </View>
     )
 }
