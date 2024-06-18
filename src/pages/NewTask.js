@@ -1,82 +1,83 @@
-import { Text, View, TouchableOpacity, TextInput, StyleSheet,} from "react-native";
-import { database }                         from "../config/firebaseconfig";
-import {collection, collection, addDoc }    from '../config/firebaseconfig';
-import React, {useState, useEffect}         from "react";
+import React, {useState} from "react";
+import {View, Text, StyleSheet, TextInput, TouchableOpacity} from 'react-native';
+import {database, doc, auth } from "../config/firebaseconfig";
+import {collection, addDoc } from "firebase/firestore";
 
+export default function NewTask ({navigation}){
 
-export default function NewTask({navigation}){
+    const [description, setDescription] = useState(null);
 
-    const [newTask, setNewTask] = useState(null)
-
-    function addNewTask(){
-        const taskDocRef = collection(database, "Task");
-        addDoc(taskDocRef,{
-            description: newTask,
-            status: false
-        })
-        navigation.navigate('Task')
-    }
+    const addTask = async () => {
+        try {
+          const user = auth.currentUser; // Obtém o usuário atualmente autenticado
+          if (!user) {
+            throw new Error('No user is authenticated');
+          }
+          const tasksCollection = collection(database, "Tasks");
+          await addDoc(tasksCollection, {
+            description: description,
+            status: false,
+            idUser: user.uid, // Inclui o ID do usuário
+          });
+          navigation.navigate('Task');
+        } catch (error) {
+          console.error("Error adding task: ", error);
+        }
+      };
     return(
-        <View style={StyleSheet.container}> 
-            <Text style={styles.txtDescription}> New Task </Text>
-            <TextInput 
+        <View style={styles.container}>
+            <Text style={styles.txtdescription}> Description </Text>
+            <TextInput
                 style={styles.input}
-                placeholder="ex Estudar"
-                value={newTask}
-                onChangeText={setNewTask}
+                placeholder="Ex: estudar"
+                onChangeText={setDescription}
+                value={description}
             />
             <TouchableOpacity 
-            style={styles.btnSave}
-            onPress={()=> {addNewTask()}}
-            >
-                <Text style={styles.txtBtnSave}> Save </Text>
+            style={styles.btnsave}
+            onPress={()=> {addTask()}}>
+                <Text style={styles.txtbtnsave}> Save </Text>
             </TouchableOpacity>
         </View>
     )
 }
 
 const styles = StyleSheet.create({
-    container:{
-        flex:1,
-        backgroundColor:'#DAD7CD'
+    container:
+    {
+        flex: 1,
+        backgroundColor: '#EFF1ED',
     },
-    btnNewTask:{
-        backgroundColor:'#344e41',
-        justifyContent:'center',
+    txtdescription: {
+        width: '90%',
+        marginTop: 20,
+        marginLeft: 20,
+        fontSize: 16,
+        color: '#373D20'
+    },
+    input:{
+        width: '90%',
+        marginTop: 10,
+        padding: 10, 
+        height: 50,
+        borderBottomWidth: 1,
+        borderBottomColor: '#373D20',
+        margin: 'auto'
+    },
+    btnsave:{
+        width: '60%',
+        backgroundColor: '#373D20',
+        justifyContent: 'center',
         alignItems:'center',
-        borderRadius:20,
-        height:60,
-        width:60,
-        position: 'absolute',
-        bottom:20,
-        left:'4%'
+        position:'absolute',
+        height: 50,
+        bottom: '5%',
+        left: '20%',
+        borderRadius: 20,
     },
-    txtTask:{
-        textAlign: 'center',
-        color:'#344E41',
+    txtbtnsave:{
+        color: '#EFF1ED',
+        fontSize: 25,
         fontWeight: 'bold',
-        fontSize:25,
-    },
-    txtbtnNewTask:{
-        fontSize:25,
-        fontWeight: 'bold'
-    },
-    task: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: '#F29559'
-    },
-
-    txtDescription: {
-        width: '80%',
-        fontSize: 20,
-        fontWeight: 'bold',
-        paddingHorizontal: 10
-    },
-    btnDelete:{
-        textAlign: 'center',
-        color: '#344E41',
-        fontWeight
     }
 })

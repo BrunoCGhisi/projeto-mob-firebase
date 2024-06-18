@@ -1,108 +1,160 @@
-import { View, StyleSheet, Text, TouchableOpacity, FlatList } from "react-native";
-import React, {useState,useEffect} from "react";
-import { collection, doc, onSnapshot, query } from "firebase/firestore";
-import {database} from "../config/firebaseconfig";
+import React, {useState, useEffect} from "react";
+import {SafeAreaView, Text, View, TouchableOpacity,FlatList, StyleSheet} from 'react-native';
+import {database, doc, deleteDoc, auth} from "../config/firebaseconfig";
+import { collection, onSnapshot, query,where} from 'firebase/firestore';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import { signOut } from "firebase/auth";
 
-export default function Task({navigation}){
 
-    //lista
-    const [task ,setTask] = useState([])
+export default function Task ({navigation}){
+    // um array com o useState para receber do use effect nossas tarefas
+    const [task, setTask] = useState([])
+    //conectando nosso app com o banco; 
+    //tasksCollection é a variável que está conectando com o banco Tasks.
+    //O onSnapshot é usado para escutar mudanças em tempo real na coleção "Tasks";
 
     useEffect(() => {
-        const taskCollection = collection(database, "Tasks")
-        const listen = onSnapshot(taskCollection, (query) => {
-            const list = []
-            query.forEach((doc)=>{
-                list.push({...doc.data(), id: doc.id})
-            })
-            setTask(list)
-        })
-        return () => listen()
+        const user = auth.currentUser;
+        if (!user) {
+            console.error('nenhum user logado');
+            return;
+        }
+
+        const tasksCollection = collection(database, "Tasks");
+        const q = query(tasksCollection, where("idUser", "==", user.uid));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ ...doc.data(), id: doc.id });
+            });
+            setTask(list);
+        });
+
+        return () => unsubscribe();
     }, [])
 
-    function deleteTask(id){
+    function deleteTast(id){
+        
+        //database.collection("Tasks").doc(id).deleteDoc()
         const taskDocRef = doc(database, "Tasks", id);
         deleteDoc(taskDocRef)
+        
     }
+    const logout = async () => {
+        try {
+            await signOut(auth);
+            navigation.replace("Login"); // ureplace para que o usuário não possa voltar para a tela de tarefas com o botão de voltar
+        } catch (error) {
+            console.error("Error logging out: ", error);
+        }
+    };
 
     return(
-        <View style={styles.container}>
-            <Text style={styles.txtTask}>Tarefas</Text>
-            <FlatList
-                data={task}
-                renderItem={({item}) => {
-                    return(
-                        <View style={styles.task}>
-                            <Text style={styles.txtDescription}>
-                                onPress={() => {
-                                    navigation.navigate("Details", {
-                                        id:item.id,
-                                        description:item.description
-                                    })
-                                }}
-                                {item.description}
-                            </Text>
-                            <TouchableOpacity
-                            style={styles.btnDelete}
-                            onPress={()=> deleteTask(item.id)}
-                            >
-                                <AntDesign name="delete" size={24}
-                                color="#344E41" />
-                            </TouchableOpacity>
-                        </View>
-                    )
-                }}
-            />
+        <SafeAreaView style={styles.container}>
+          <FlatList
+          showsVerticalScrollIndicator={false}
+          data={task}
+          renderItem={({item} )=>{
+            return(
+            <View style={styles.tasks}>
+                <TouchableOpacity
+                    style={styles.btnDeleteTask}
+                    onPress={()=>{
+                        deleteTast(item.id)
+                    }}>
+                    <AntDesign name="delete" size={24} color="#373D20" />
+                </TouchableOpacity>
+                <Text
+                style={styles.txtdescription}
+                onPress={()=> {
+                    navigation.navigate("Details",{
+                        id:item.id,
+                        description:item.description
+                    })
+                }}>
+                    {item.description}
+                </Text>
+            </View>
+            )
+        }}
+        />
 
-            <TouchableOpacity style={styles.btnNewTask}onPress={()=> navigation.navigate("NewTask")}>
-                <Text style={styles.txtbtnNewTask}> + </Text>
+          <TouchableOpacity style={styles.btnNewTask}>
+            <Text 
+            style={styles.iconBtn}
+            onPress={()=> navigation.navigate("NewTask")}> + </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnLogout} onPress={logout}>
+                <Text style={styles.txtbtnLogout}>Logout</Text>
             </TouchableOpacity>
-        </View>
+
+        </SafeAreaView>
     )
-};
+}
 
 const styles = StyleSheet.create({
-    container:{
-        flex:1,
-        backgroundColor:'#DAD7CD'
+    container:
+    {
+        flex: 1,
+        backgroundColor: '#EFF1ED',
+        paddingTop: 20,
     },
-    btnNewTask:{
-        backgroundColor:'#344e41',
-        justifyContent:'center',
-        alignItems:'center',
-        borderRadius:20,
-        height:60,
-        width:60,
+    btnNewTask:
+    {
+        backgroundColor: '#373D20',
+        justifyContent: 'center',
+        alignItems: 'center',
         position: 'absolute',
-        bottom:20,
-        left:'4%'
+        height: 60,
+        width: 60,
+        bottom: 30,
+        left: 20,
+        borderRadius: 20,
+        
     },
-    txtTask:{
-        textAlign: 'center',
-        color:'#344E41',
+    iconBtn:
+    {
+        color: '#EFF1ED',
+        fontSize: 25,
         fontWeight: 'bold',
-        fontSize:25,
     },
-    txtbtnNewTask:{
-        fontSize:25,
-        fontWeight: 'bold'
-    },
-    task: {
+    tasks: {
         width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-between',
-        backgroundColor: '#F29559'
+        marginTop: 5,
     },
+    btnDeleteTask: {
+        justifyContent: 'center',
+        paddingLeft: 15,
 
-    txtDescription: {
-        width: '80%',
-        fontSize: 20,
-        fontWeight: 'bold',
-        paddingHorizontal: 10
     },
-    btnDelete:{
-        textAlign: 'center',
-        color: '#344E41',
-        fontWeight
-    }
+    txtdescription:{
+        width: '80%',
+        alignContent: 'flex-start',
+        backgroundColor: '#bcbd8b',
+        padding: 12,
+        paddingHorizontal: 20,
+        marginBottom: 5,
+        marginRight: 15,
+        color: '#766153',
+    },
+    btnLogout: {
+        backgroundColor: '#FF0000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        height: 50,
+        width: '60%',
+        bottom: 30,
+        right: 20,
+        borderRadius: 20,
+    },
+    txtbtnLogout: {
+        color: '#EFF1ED',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+        
+
 })
